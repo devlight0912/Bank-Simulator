@@ -1,0 +1,462 @@
+-- Bank Simulator Database Schema for Supabase
+-- Execute these SQL commands in Supabase SQL Editor
+
+-- Enable UUID extension
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Users table
+CREATE TABLE IF NOT EXISTS users (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    phone VARCHAR(20),
+    role VARCHAR(20) DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'suspended')),
+    last_login TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Bank accounts table
+CREATE TABLE IF NOT EXISTS bank_accounts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    account_name VARCHAR(100) NOT NULL,
+    account_type VARCHAR(20) NOT NULL CHECK (account_type IN ('checking', 'savings', 'business')),
+    currency VARCHAR(3) NOT NULL CHECK (currency IN ('USD', 'EUR', 'GBP', 'SGD', 'AUD', 'CAD', 'CHF', 'JPY', 'NOK', 'SEK', 'DKK', 'HKD', 'CNY')),
+    balance DECIMAL(15,2) DEFAULT 0.00,
+    iban_encrypted TEXT NOT NULL,
+    bic_encrypted TEXT NOT NULL,
+    bank_name VARCHAR(100) DEFAULT 'SecureBank International',
+    country_code VARCHAR(2) NOT NULL,
+    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'closed')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Transactions table
+CREATE TABLE IF NOT EXISTS transactions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    from_account_id UUID REFERENCES bank_accounts(id),
+    to_account_id UUID REFERENCES bank_accounts(id),
+    transaction_type VARCHAR(30) NOT NULL CHECK (transaction_type IN ('transfer', 'money_generation', 'crypto_purchase', 'payment_provider', 'atm_withdrawal', 'invoice_payment', 'swift_transfer')),
+    amount DECIMAL(15,2) NOT NULL,
+    currency VARCHAR(3) NOT NULL,
+    exchange_rate DECIMAL(10,6) DEFAULT 1.0,
+    fee DECIMAL(15,2) DEFAULT 0.00,
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed', 'cancelled')),
+    reference TEXT NOT NULL,
+    recipient_name VARCHAR(100),
+    to_iban VARCHAR(34),
+    to_bic VARCHAR(11),
+    swift_code VARCHAR(11),
+    iso_message_type VARCHAR(20),
+    regulatory_code VARCHAR(10),
+    compliance_flags JSONB DEFAULT '[]',
+    audit_trail JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    completed_at TIMESTAMPTZ,
+    failed_at TIMESTAMPTZ,
+    failure_reason TEXT
+);
+
+-- Crypto portfolio table
+CREATE TABLE IF NOT EXISTS crypto_portfolio (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    symbol VARCHAR(10) NOT NULL,
+    name VARCHAR(50) NOT NULL,
+    amount DECIMAL(20,8) DEFAULT 0.00000000,
+    average_price_usd DECIMAL(15,2) DEFAULT 0.00,
+    privacy_level VARCHAR(20) DEFAULT 'public' CHECK (privacy_level IN ('public', 'private')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, symbol)
+);
+
+-- Payment providers table
+CREATE TABLE IF NOT EXISTS payment_providers (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider_name VARCHAR(50) NOT NULL,
+    account_identifier VARCHAR(100) NOT NULL,
+    account_type VARCHAR(30) NOT NULL,
+    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- IBAN generations table (for audit trail)
+CREATE TABLE IF NOT EXISTS iban_generations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    iban VARCHAR(34) NOT NULL,
+    bic VARCHAR(11) NOT NULL,
+    country_code VARCHAR(2) NOT NULL,
+    bank_code VARCHAR(10),
+    purpose TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- User sessions table (for security tracking)
+CREATE TABLE IF NOT EXISTS user_sessions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    ip_address INET,
+    user_agent TEXT,
+    endpoint VARCHAR(255),
+    last_activity TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Login attempts table (for brute force protection)
+CREATE TABLE IF NOT EXISTS login_attempts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    identifier VARCHAR(255) NOT NULL, -- email or IP
+    ip_address INET,
+    attempted_at TIMESTAMPTZ DEFAULT NOW(),
+    success BOOLEAN DEFAULT FALSE
+);
+
+-- Compliance audit table
+CREATE TABLE IF NOT EXISTS compliance_audits (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    audit_type VARCHAR(50) NOT NULL,
+    scope VARCHAR(100) NOT NULL,
+    auditor VARCHAR(100) NOT NULL,
+    result VARCHAR(20) NOT NULL CHECK (result IN ('PASSED', 'FAILED', 'CERTIFIED', 'PENDING')),
+    certificate_number VARCHAR(50),
+    audit_date DATE NOT NULL,
+    next_review_date DATE,
+    details JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
+CREATE INDEX IF NOT EXISTS idx_bank_accounts_user_id ON bank_accounts(user_id);
+CREATE INDEX IF NOT EXISTS idx_bank_accounts_status ON bank_accounts(status);
+CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_status ON transactions(status);
+CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_transactions_from_account ON transactions(from_account_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_to_account ON transactions(to_account_id);
+CREATE INDEX IF NOT EXISTS idx_crypto_portfolio_user_id ON crypto_portfolio(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_last_activity ON user_sessions(last_activity);
+CREATE INDEX IF NOT EXISTS idx_login_attempts_identifier ON login_attempts(identifier);
+CREATE INDEX IF NOT EXISTS idx_login_attempts_attempted_at ON login_attempts(attempted_at);
+
+-- Create updated_at trigger function
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Apply updated_at triggers
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_bank_accounts_updated_at ON bank_accounts;
+CREATE TRIGGER update_bank_accounts_updated_at BEFORE UPDATE ON bank_accounts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_crypto_portfolio_updated_at ON crypto_portfolio;
+CREATE TRIGGER update_crypto_portfolio_updated_at BEFORE UPDATE ON crypto_portfolio FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_payment_providers_updated_at ON payment_providers;
+CREATE TRIGGER update_payment_providers_updated_at BEFORE UPDATE ON payment_providers FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Create RPC function for atomic transfers
+CREATE OR REPLACE FUNCTION process_transfer(
+    p_transaction_id UUID,
+    p_user_id UUID,
+    p_from_account_id UUID,
+    p_to_iban VARCHAR(34),
+    p_amount DECIMAL(15,2),
+    p_currency VARCHAR(3),
+    p_reference TEXT,
+    p_recipient_name VARCHAR(100),
+    p_new_balance DECIMAL(15,2)
+) RETURNS VOID AS $$
+BEGIN
+    -- Update account balance
+    UPDATE bank_accounts 
+    SET balance = p_new_balance, updated_at = NOW()
+    WHERE id = p_from_account_id AND user_id = p_user_id;
+    
+    -- Insert transaction record
+    INSERT INTO transactions (
+        id,
+        user_id,
+        from_account_id,
+        transaction_type,
+        amount,
+        currency,
+        status,
+        reference,
+        recipient_name,
+        to_iban,
+        iso_message_type,
+        regulatory_code,
+        audit_trail,
+        created_at,
+        completed_at
+    ) VALUES (
+        p_transaction_id,
+        p_user_id,
+        p_from_account_id,
+        'transfer',
+        p_amount,
+        p_currency,
+        'completed',
+        p_reference,
+        p_recipient_name,
+        p_to_iban,
+        'pacs.008.001.08',
+        'CBFF',
+        jsonb_build_object(
+            'auditCompliant', true,
+            'legitimateTransfer', true,
+            'bankingStandards', 'ISO20022',
+            'regulatoryCompliance', 'EU_AML_5'
+        ),
+        NOW(),
+        NOW()
+    );
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create RPC function for SWIFT transfers
+CREATE OR REPLACE FUNCTION process_swift_transfer(
+    p_transaction_id UUID,
+    p_user_id UUID,
+    p_from_account_id UUID,
+    p_recipient_name VARCHAR(100),
+    p_recipient_country VARCHAR(2),
+    p_bank_name VARCHAR(100),
+    p_swift_code VARCHAR(11),
+    p_account_number VARCHAR(50),
+    p_amount DECIMAL(15,2),
+    p_currency VARCHAR(3),
+    p_fee DECIMAL(15,2),
+    p_purpose TEXT,
+    p_description TEXT,
+    p_recipient_address TEXT,
+    p_new_balance DECIMAL(15,2)
+) RETURNS VOID AS $$
+BEGIN
+    -- Update account balance
+    UPDATE bank_accounts 
+    SET balance = p_new_balance, updated_at = NOW()
+    WHERE id = p_from_account_id AND user_id = p_user_id;
+    
+    -- Insert transaction record
+    INSERT INTO transactions (
+        id,
+        user_id,
+        from_account_id,
+        transaction_type,
+        amount,
+        currency,
+        fee,
+        status,
+        reference,
+        recipient_name,
+        swift_code,
+        iso_message_type,
+        regulatory_code,
+        audit_trail,
+        created_at,
+        completed_at
+    ) VALUES (
+        p_transaction_id,
+        p_user_id,
+        p_from_account_id,
+        'swift_transfer',
+        p_amount,
+        p_currency,
+        p_fee,
+        'completed',
+        'SWIFT Transfer - ' || p_purpose,
+        p_recipient_name,
+        p_swift_code,
+        'MT103',
+        'INTC',
+        jsonb_build_object(
+            'recipientCountry', p_recipient_country,
+            'bankName', p_bank_name,
+            'accountNumber', p_account_number,
+            'purpose', p_purpose,
+            'description', p_description,
+            'recipientAddress', p_recipient_address,
+            'auditCompliant', true,
+            'swiftCompliant', true
+        ),
+        NOW(),
+        NOW()
+    );
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create RPC function for ATM withdrawals
+CREATE OR REPLACE FUNCTION process_atm_withdrawal(
+    p_transaction_id UUID,
+    p_user_id UUID,
+    p_account_id UUID,
+    p_amount DECIMAL(15,2),
+    p_fee DECIMAL(15,2),
+    p_atm_id VARCHAR(50),
+    p_atm_location TEXT,
+    p_new_balance DECIMAL(15,2)
+) RETURNS VOID AS $$
+BEGIN
+    -- Update account balance
+    UPDATE bank_accounts 
+    SET balance = p_new_balance, updated_at = NOW()
+    WHERE id = p_account_id AND user_id = p_user_id;
+    
+    -- Insert transaction record
+    INSERT INTO transactions (
+        id,
+        user_id,
+        from_account_id,
+        transaction_type,
+        amount,
+        currency,
+        fee,
+        status,
+        reference,
+        audit_trail,
+        created_at,
+        completed_at
+    ) VALUES (
+        p_transaction_id,
+        p_user_id,
+        p_account_id,
+        'atm_withdrawal',
+        p_amount,
+        (SELECT currency FROM bank_accounts WHERE id = p_account_id),
+        p_fee,
+        'completed',
+        'ATM Withdrawal - ' || p_atm_location,
+        jsonb_build_object(
+            'atmId', p_atm_id,
+            'atmLocation', p_atm_location,
+            'withdrawalAmount', p_amount,
+            'fee', p_fee
+        ),
+        NOW(),
+        NOW()
+    );
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create RPC function for payment provider transfers
+CREATE OR REPLACE FUNCTION process_provider_payment(
+    p_transaction_id UUID,
+    p_user_id UUID,
+    p_from_account_id UUID,
+    p_provider VARCHAR(50),
+    p_recipient_account VARCHAR(100),
+    p_recipient_name VARCHAR(100),
+    p_amount DECIMAL(15,2),
+    p_currency VARCHAR(3),
+    p_fee DECIMAL(15,2),
+    p_purpose TEXT,
+    p_description TEXT,
+    p_new_balance DECIMAL(15,2)
+) RETURNS VOID AS $$
+BEGIN
+    -- Update account balance
+    UPDATE bank_accounts 
+    SET balance = p_new_balance, updated_at = NOW()
+    WHERE id = p_from_account_id AND user_id = p_user_id;
+    
+    -- Insert transaction record
+    INSERT INTO transactions (
+        id,
+        user_id,
+        from_account_id,
+        transaction_type,
+        amount,
+        currency,
+        fee,
+        status,
+        reference,
+        recipient_name,
+        iso_message_type,
+        regulatory_code,
+        audit_trail,
+        created_at,
+        completed_at
+    ) VALUES (
+        p_transaction_id,
+        p_user_id,
+        p_from_account_id,
+        'payment_provider',
+        p_amount,
+        p_currency,
+        p_fee,
+        'completed',
+        'Payment to ' || p_provider || ' - ' || p_purpose,
+        p_recipient_name,
+        'pacs.008.001.08',
+        'CBFF',
+        jsonb_build_object(
+            'provider', p_provider,
+            'recipientAccount', p_recipient_account,
+            'purpose', p_purpose,
+            'description', p_description,
+            'auditCompliant', true
+        ),
+        NOW(),
+        NOW()
+    );
+END;
+$$ LANGUAGE plpgsql;
+
+-- Insert default compliance audit records
+INSERT INTO compliance_audits (audit_type, scope, auditor, result, certificate_number, audit_date, next_review_date, details) VALUES
+('Annual Compliance', 'Full Banking Operations', 'KPMG International', 'PASSED', 'CERT-2024-SBI-001', '2024-01-15', '2025-01-15', '{"score": 99.8, "findings": 0, "recommendations": 2}'),
+('AML/CTF Review', 'Anti-Money Laundering', 'European Banking Authority', 'PASSED', 'EBA-2024-AML-789', '2024-06-15', '2024-12-15', '{"amlScore": 100, "riskLevel": "LOW", "violations": 0}'),
+('ISO 20022 Compliance', 'Messaging Standards', 'ISO Certification Body', 'CERTIFIED', 'ISO-20022-2024-156', '2024-09-01', '2027-09-01', '{"standard": "ISO20022:2022", "validity": "3years", "scope": "global"}')
+ON CONFLICT DO NOTHING;
+
+-- Row Level Security (RLS) policies
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bank_accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE crypto_portfolio ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payment_providers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE iban_generations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_sessions ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for users
+CREATE POLICY "Users can view their own profile" ON users FOR SELECT USING (auth.uid()::text = id::text);
+CREATE POLICY "Users can update their own profile" ON users FOR UPDATE USING (auth.uid()::text = id::text);
+
+-- RLS Policies for bank_accounts
+CREATE POLICY "Users can view their own accounts" ON bank_accounts FOR SELECT USING (auth.uid()::text = user_id::text);
+CREATE POLICY "Users can create their own accounts" ON bank_accounts FOR INSERT WITH CHECK (auth.uid()::text = user_id::text);
+CREATE POLICY "Users can update their own accounts" ON bank_accounts FOR UPDATE USING (auth.uid()::text = user_id::text);
+
+-- RLS Policies for transactions
+CREATE POLICY "Users can view their own transactions" ON transactions FOR SELECT USING (auth.uid()::text = user_id::text);
+CREATE POLICY "Users can create their own transactions" ON transactions FOR INSERT WITH CHECK (auth.uid()::text = user_id::text);
+
+-- RLS Policies for crypto_portfolio
+CREATE POLICY "Users can view their own crypto portfolio" ON crypto_portfolio FOR SELECT USING (auth.uid()::text = user_id::text);
+CREATE POLICY "Users can manage their own crypto portfolio" ON crypto_portfolio FOR ALL USING (auth.uid()::text = user_id::text);
+
+-- Grant necessary permissions
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated;
