@@ -445,6 +445,61 @@ export default function DashboardPage() {
           </Card>
         </div>
 
+        {/* Global Banking Network Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-blue-100 text-sm font-medium">Countries Supported</p>
+                  <p className="text-3xl font-bold">50</p>
+                  <p className="text-blue-200 text-xs mt-1">Global coverage</p>
+                </div>
+                <GlobeAltIcon className="h-10 w-10 text-blue-200" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white border-0">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-green-100 text-sm font-medium">Currencies Available</p>
+                  <p className="text-3xl font-bold">30+</p>
+                  <p className="text-green-200 text-xs mt-1">Multi-currency</p>
+                </div>
+                <CurrencyDollarIcon className="h-10 w-10 text-green-200" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white border-0">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-purple-100 text-sm font-medium">Banking Systems</p>
+                  <p className="text-3xl font-bold">IBAN + SWIFT</p>
+                  <p className="text-purple-200 text-xs mt-1">All networks</p>
+                </div>
+                <BuildingLibraryIcon className="h-10 w-10 text-purple-200" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white border-0">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-orange-100 text-sm font-medium">Regions</p>
+                  <p className="text-3xl font-bold">EU, MENA, LATAM, APAC</p>
+                  <p className="text-orange-200 text-xs mt-1">Worldwide</p>
+                </div>
+                <ArrowRightIcon className="h-10 w-10 text-orange-200" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Quick Actions */}
         <Card className="bg-white border-0 shadow-lg">
           <CardHeader>

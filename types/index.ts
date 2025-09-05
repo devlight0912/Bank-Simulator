@@ -12,7 +12,7 @@ export interface User {
 }
 
 // Currency types
-export type CurrencyCode = 'USD' | 'EUR' | 'GBP' | 'NOK' | 'CHF' | 'SEK' | 'DKK' | 'JPY' | 'CAD' | 'AUD' | 'SGD' | 'HKD' | 'CNY';
+export type CurrencyCode = 'USD' | 'EUR' | 'GBP' | 'NOK' | 'CHF' | 'SEK' | 'DKK' | 'JPY' | 'CAD' | 'AUD' | 'SGD' | 'HKD' | 'CNY' | 'EGP' | 'MAD' | 'ZAR' | 'BRL' | 'ARS' | 'CLP' | 'COP' | 'PEN' | 'UYU' | 'RUB' | 'BGN' | 'RON' | 'HRK' | 'PLN' | 'CZK' | 'HUF' | 'AED' | 'QAR' | 'INR' | 'THB' | 'MYR';
 
 export interface Currency {
   code: CurrencyCode;
@@ -136,8 +136,8 @@ export interface DashboardStats {
   securityScore: number;
 }
 
-// Country codes for IBAN generation
-export type CountryCode = 'AD' | 'AE' | 'AL' | 'AT' | 'AZ' | 'BA' | 'BE' | 'BG' | 'BH' | 'BR' | 'BY' | 'CH' | 'CR' | 'CY' | 'CZ' | 'DE' | 'DK' | 'DO' | 'EE' | 'EG' | 'ES' | 'FI' | 'FO' | 'FR' | 'GB' | 'GE' | 'GI' | 'GL' | 'GR' | 'GT' | 'HR' | 'HU' | 'IE' | 'IL' | 'IS' | 'IT' | 'JO' | 'KW' | 'KZ' | 'LB' | 'LC' | 'LI' | 'LT' | 'LU' | 'LV' | 'MC' | 'MD' | 'ME' | 'MK' | 'MR' | 'MT' | 'MU' | 'NL' | 'NO' | 'PK' | 'PL' | 'PS' | 'PT' | 'QA' | 'RO' | 'RS' | 'SA' | 'SE' | 'SI' | 'SK' | 'SM' | 'TN' | 'TR' | 'UA' | 'VG' | 'XK' | 'SG' | 'AU' | 'HK' | 'CN';
+// Country codes for IBAN generation (50 countries total)
+export type CountryCode = 'AD' | 'AT' | 'BE' | 'BG' | 'CH' | 'CY' | 'CZ' | 'DE' | 'DK' | 'EE' | 'ES' | 'FI' | 'FR' | 'GB' | 'GR' | 'HR' | 'HU' | 'IE' | 'IT' | 'LT' | 'LU' | 'LV' | 'MC' | 'MT' | 'NL' | 'NO' | 'PL' | 'PT' | 'RO' | 'SE' | 'SI' | 'SK' | 'EG' | 'MA' | 'ZA' | 'AE' | 'QA' | 'BH' | 'KW' | 'SA' | 'BR' | 'AR' | 'CL' | 'CO' | 'PE' | 'UY' | 'SG' | 'AU' | 'HK' | 'CN' | 'IN' | 'TH' | 'MY' | 'VG' | 'RU' | 'BY' | 'KZ' | 'MU' | 'PA' | 'BS';
 
 export interface CountryInfo {
   code: CountryCode;
